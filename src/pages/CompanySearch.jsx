@@ -1,6 +1,6 @@
 // src/pages/CompanySearch.jsx
 import { useState } from "react";
-import Header from "../components/common/Header";
+// import Header from "../components/common/Header";
 
 export default function CompanySearch() {
   const [query, setQuery] = useState("");
@@ -29,7 +29,7 @@ export default function CompanySearch() {
 
   return (
     <div className="min-h-screen bg-base-100">
-      <Header />
+      {/* <Header /> */}
       <div className="p-6">
         <h2 className="text-2xl font-bold mb-4">🔍 Company Search</h2>
 

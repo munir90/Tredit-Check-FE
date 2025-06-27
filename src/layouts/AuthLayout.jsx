@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ThemeSwitcher from "../components/common/ThemeSwitcher";
-import Header from "../components/common/Header"; // Optional reusable header
+// import Header from "../components/common/Header"; // Optional reusable header
 
 import { Toaster } from 'react-hot-toast';
 
@@ -21,7 +21,7 @@ export default function AuthLayout({ children }) {
     <div className="min-h-screen bg-base-100 text-base-content">
       {/* <ThemeSwitcher /> */}
         <Toaster />
-        <Header />
+        {/* <Header /> */}
         <div className="p-4">{children}</div>
         </div>
     </>
