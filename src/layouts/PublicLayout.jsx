@@ -10,16 +10,16 @@ export default function PublicLayout() {
         <ThemeSwitcher />
         <Outlet />
         <Toaster
-            position="top-right"
-            toastOptions={{
-                style: {
-                background: "#fff",
-                color: "#333",
-                borderRadius: "8px",
-                padding: "12px 16px",
-                },
-            }}
-            />
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: "#fff",
+              color: "#333",
+              borderRadius: "8px",
+              padding: "12px 16px",
+            },
+          }}
+        />
 
       </div>
     </>

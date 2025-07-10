@@ -1,27 +1,61 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import App from "./App.jsx";
-import Login from "./pages/Login.jsx";
-import CompanySearch from "./pages/CompanySearch.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
 import AuthLayout from "./layouts/AuthLayout.jsx";
 import PublicLayout from "./layouts/PublicLayout.jsx";
 import "./index.css";
+
+// Dynamically import all page components
+const pages = import.meta.glob("./pages/**/*.jsx", { eager: true });
+
+// 404 Not Found component
+function NotFound() {
+  return <div style={{ padding: 32, textAlign: "center" }}><h1>404 - Not Found</h1></div>;
+}
+
+// Helper to convert file path to route path
+function pathFromFile(file) {
+  // Remove './pages' and '.jsx'
+  let path = file.replace("./pages", "").replace(/\.jsx$/, "");
+  // If path is '/Index', treat as root
+  if (path.toLowerCase() === "/index") return "/";
+  // Lowercase first letter of each segment
+  path = path
+    .split("/")
+    .map((seg) => (seg ? seg.charAt(0).toLowerCase() + seg.slice(1) : ""))
+    .join("/");
+  return path;
+}
+
+// Separate public and auth routes based on your convention
+const publicRoutes = [];
+const authRoutes = [];
+
+Object.entries(pages).forEach(([file, mod]) => {
+  const path = pathFromFile(file);
+  // Example: decide by folder name or file name
+  if (path === "/" || path.startsWith("/login")) {
+    publicRoutes.push({ path: path === "/" ? "" : path.slice(1), element: React.createElement(mod.default) });
+  } else {
+    authRoutes.push({ path: path.slice(1), element: React.createElement(mod.default) });
+  }
+});
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
         <Route element={<PublicLayout />}>
-          <Route path="/" element={<App />} />
-          <Route path="/login" element={<Login />} />
+          {publicRoutes.map((route) => (
+            <Route key={route.path} path={route.path} element={route.element} />
+          ))}
+          <Route path="*" element={<NotFound />} />
         </Route>
         <Route element={<AuthLayout />}>
-          <Route path="/" element={<App />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-
-          <Route path="/companysearch" element={<CompanySearch />} />
+          {authRoutes.map((route) => (
+            <Route key={route.path} path={route.path} element={route.element} />
+          ))}
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </BrowserRouter>
