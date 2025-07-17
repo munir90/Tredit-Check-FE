@@ -5,7 +5,7 @@ import AuthLayout from "./layouts/AuthLayout.jsx";
 import PublicLayout from "./layouts/PublicLayout.jsx";
 import "./index.css";
 import CompanySearch from "./pages/Company/Search.jsx";
-import CompanyProfile from "./pages/Company/Profile/Index.jsx";
+import CompanyProfile from './pages/Company/Profile/index.jsx';
 import Home from "./pages/index.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 
