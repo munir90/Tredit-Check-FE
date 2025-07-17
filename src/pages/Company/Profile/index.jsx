@@ -164,13 +164,103 @@ const NewsDetails = (props) => {
   );
 }
 
+const OfficerDetails = ({ officers }) => {
+  if (!officers || officers.length === 0) {
+    return (
+      <div style={{ marginTop: 32 }}>
+        <h3 style={{ fontSize: 22, marginBottom: 16, color: "#1e293b" }}>Company Officers</h3>
+        <div style={{ color: "#64748b" }}>No officers found for this company.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 32 }}>
+      <h3 style={{ fontSize: 22, marginBottom: 16, color: "#1e293b" }}>Company Officers</h3>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+        {officers.map((officer, index) => (
+          <div
+            key={index}
+            style={{
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: 10,
+              padding: "18px 22px",
+              boxShadow: "0 2px 8px rgba(30,41,59,0.04)",
+              marginBottom: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 18,
+            }}
+          >
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: "50%",
+                background: "#e0e7ef",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 700,
+                fontSize: 22,
+                color: "#2563eb",
+                marginRight: 10,
+              }}
+            >
+              {officer.name?.[0] || "?"}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 17, color: "#334155" }}>
+                {officer.name}
+              </div>
+              <div style={{ color: "#64748b", fontSize: 15, marginBottom: 2 }}>
+                {officer.officer_role ? officer.officer_role.charAt(0).toUpperCase() + officer.officer_role.slice(1) : officer.position || "Officer"}
+              </div>
+              {officer.appointed_on && (
+                <div style={{ color: "#64748b", fontSize: 13 }}>
+                  <b>Appointed:</b> {officer.appointed_on}
+                </div>
+              )}
+              {officer.nationality && (
+                <div style={{ color: "#64748b", fontSize: 13 }}>
+                  <b>Nationality:</b> {officer.nationality}
+                </div>
+              )}
+              {officer.country_of_residence && (
+                <div style={{ color: "#64748b", fontSize: 13 }}>
+                  <b>Country:</b> {officer.country_of_residence}
+                </div>
+              )}
+              {officer.address && (
+                <div style={{ color: "#64748b", fontSize: 13, marginTop: 4 }}>
+                  <b>Address:</b>{" "}
+                  {[
+                    officer.address.address_line_1,
+                    officer.address.address_line_2,
+                    officer.address.locality,
+                    officer.address.region,
+                    officer.address.postal_code
+                  ].filter(Boolean).join(", ")}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function CompanyProfile() {
   const params = useParams();
 
   const { company_number } = params;
 
   const [companyDetails, setCompanyDetails] = useState(null);
+  const [officersData, setOfficersData] = useState([]);
   const [newsData, setNewsData] = useState(null);
+  const [sanctionsData, setSanctionsData] = useState(null);
 
   // Fetch company profile data using company_number
   const fetchCompanyProfile = async () => {
@@ -194,7 +284,7 @@ export default function CompanyProfile() {
   // Fetch company news or updates
   const fetchCompanyNews = async (name) => {
     try {
-      const res = await fetch(`${BASE_URL}/media/news-check?name=${name}`, {
+      const res = await fetch(`${BASE_URL}/media/news-check?name=${name}&country=uk`, {
         headers: {
           "x-verit-api-key": localStorage.getItem("verit_api_key") || "",
           "Authorization": `Bearer ${localStorage.getItem("verit_token") || ""}`,
@@ -209,8 +299,47 @@ export default function CompanyProfile() {
     }
   }
 
+  const fetchSanctionsData = async (name) => {
+    try {
+      const res = await fetch(`${BASE_URL}/due-diligence/sanctions-check?name=${name}&country=uk&entityType=Company`, {
+        headers: {
+          "x-verit-api-key": localStorage.getItem("verit_api_key") || "",
+          "Authorization": `Bearer ${localStorage.getItem("verit_token") || ""}`,
+        }
+      });
+      if (!res.ok) throw new Error("Failed to fetch sanctions data");
+      const data = await res.json();
+      setSanctionsData(data);
+      // Handle the sanctions data as needed
+    } catch (err) {
+      console.error("Error fetching sanctions data:", err);
+    }
+  }
+
+  const fetchComapnyOfficers = async (companyNumber) => {
+    try {
+      const res = await fetch(`${BASE_URL}/ubo/officers/${companyNumber}`, {
+        headers: {
+          "x-verit-api-key": localStorage.getItem("verit_api_key") || "",
+          "Authorization": `Bearer ${localStorage.getItem("verit_token") || ""}`,
+        }
+      });
+      if (!res.ok) throw new Error("Failed to fetch company officers");
+      const data = await res.json();
+      // Handle the officers data as needed
+      setOfficersData(data.officers || []);
+    } catch (err) {
+      console.error("Error fetching company officers:", err);
+    }
+  }
+
   // Call the fetch function when component mounts
   useEffect(() => {
+    if (!company_number) {
+      console.error("Company number is required to fetch profile.");
+      return;
+    }
+
     fetchCompanyProfile();
   }, [company_number]);
 
@@ -219,21 +348,10 @@ export default function CompanyProfile() {
     if (companyDetails && companyDetails.profile) {
       const companyName = companyDetails.profile.subject.name;
       fetchCompanyNews(companyName);
+      fetchComapnyOfficers(companyDetails.profile.raw_data.company_number);
+      fetchSanctionsData(companyName);
     }
   }, [companyDetails]);
-
-  useEffect(() => {
-    if (companyDetails) {
-      console.log("Company Details:", companyDetails);
-      // Handle the company details as needed
-    }
-
-    if (newsData) {
-      console.log("Company News Data:", newsData);
-      // Handle the news data as needed
-    }
-  }, [newsData]);
-
 
   return (
     <div
@@ -449,6 +567,9 @@ export default function CompanyProfile() {
                 </ul>
               </div>
             )}
+
+            {/* Officers Section */}
+            <OfficerDetails officers={officersData} />
 
             {/* News Section */}
             <NewsDetails newsData={newsData?.checks} />
