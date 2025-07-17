@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
-export default function Index() {
+export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [apiKey, setApiKey] = useState("");

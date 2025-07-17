@@ -90,6 +90,9 @@ export default function CompanySearch() {
                   e.currentTarget.style.transform = '';
                   e.currentTarget.style.boxShadow = '';
                 }}
+                onClick={() => {
+                  window.location.href = `/company/profile/${company.company_number}`;
+                }}
               >
                 <h3 className="text-xl font-semibold text-blue-700 mb-2 flex items-center gap-2">
                   <span role="img" aria-label="building">🏢</span>

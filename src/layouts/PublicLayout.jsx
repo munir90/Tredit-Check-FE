@@ -7,7 +7,7 @@ export default function PublicLayout() {
   return (
     <>
       <div className="min-h-screen bg-base-100 text-base-content">
-        <ThemeSwitcher />
+        {/* <ThemeSwitcher /> */}
         <Outlet />
         <Toaster
           position="top-right"
