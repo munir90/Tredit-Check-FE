@@ -4,10 +4,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AuthLayout from "./layouts/AuthLayout.jsx";
 import PublicLayout from "./layouts/PublicLayout.jsx";
 import "./index.css";
-import CompanySearch from "./pages/Company/Search.jsx";
-import CompanyProfile from './pages/Company/Profile/index.jsx';
-import Home from "./pages/index.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
+import CompanySearch from "./pages/company/search";
+import CompanyProfile from './pages/company/profile';
+import Home from "./pages";
+import Dashboard from "./pages/dashboard";
 
 // Dynamically import all page components
 // const pages = import.meta.glob("./pages/**/*.jsx", { eager: true });
