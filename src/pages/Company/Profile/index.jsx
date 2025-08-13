@@ -165,6 +165,11 @@ const NewsDetails = (props) => {
 }
 
 const OfficerDetails = ({ officers }) => {
+
+  const [selectedOfficerSanctions, setSelectedOfficerSanctions] = useState(null);
+  const [sanctionsModalOpen, setSanctionsModalOpen] = useState(false);
+  const [loadingSanctions, setLoadingSanctions] = useState(false);
+
   if (!officers || officers.length === 0) {
     return (
       <div style={{ marginTop: 32 }}>
@@ -173,6 +178,38 @@ const OfficerDetails = ({ officers }) => {
       </div>
     );
   }
+
+  const handleOfficerClick = async (officer) => {
+    setLoadingSanctions(true);
+    setSanctionsModalOpen(true);
+    const officerName = officer.name || "Unknown Officer";
+    const officerType = officer.entity_type || "Person";
+    const officerNumber = officer.person_number || "";
+
+    try {
+      const res = await fetch(
+        `${BASE_URL}/due-diligence/sanctions-check?name=${encodeURIComponent(officerName)}&entityType=${encodeURIComponent(officerType)}&registrationNumber=${encodeURIComponent(officerNumber)}`,
+        {
+          method: "GET",
+          headers: {
+            "x-verit-api-key": localStorage.getItem("verit_api_key") || "",
+            "Authorization": `Bearer ${localStorage.getItem("verit_token") || ""}`,
+          }
+        }
+      );
+      const data = await res.json();
+      setSelectedOfficerSanctions(data);
+    } catch (error) {
+      setSelectedOfficerSanctions({ error: "Error fetching sanctions data." });
+    } finally {
+      setLoadingSanctions(false);
+    }
+  };
+
+  const closeSanctionsModal = () => {
+    setSanctionsModalOpen(false);
+    setSelectedOfficerSanctions(null);
+  };
 
   return (
     <div style={{ marginTop: 32 }}>
@@ -191,7 +228,9 @@ const OfficerDetails = ({ officers }) => {
               display: "flex",
               alignItems: "center",
               gap: 18,
+              cursor: "pointer"
             }}
+            onClick={() => handleOfficerClick(officer)}
           >
             <div
               style={{
@@ -248,6 +287,205 @@ const OfficerDetails = ({ officers }) => {
           </div>
         ))}
       </div>
+      {/* Modal for sanctions details */}
+      {sanctionsModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(30,41,59,0.25)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+          onClick={closeSanctionsModal}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: "32px 28px",
+              minWidth: 420,
+              maxWidth: 600,
+              maxHeight: "80vh",
+              overflowY: "auto",
+              boxShadow: "0 8px 32px rgba(30,41,59,0.18)",
+              position: "relative"
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              style={{
+                position: "absolute",
+                top: 16,
+                right: 16,
+                background: "none",
+                border: "none",
+                fontSize: 22,
+                color: "#64748b",
+                cursor: "pointer"
+              }}
+              onClick={closeSanctionsModal}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <h2 style={{ marginBottom: 18, color: "#2563eb", fontWeight: 700, fontSize: 20 }}>
+              Officer Sanctions Details
+            </h2>
+            {loadingSanctions ? (
+              <div style={{ textAlign: "center", padding: 40 }}>
+                <div
+                  style={{
+                    margin: "0 auto 20px",
+                    border: "5px solid #e5e7eb",
+                    borderTop: "5px solid #3b82f6",
+                    borderRadius: "50%",
+                    width: 36,
+                    height: 36,
+                    animation: "spin 1s linear infinite",
+                  }}
+                />
+                <p style={{ color: "#64748b", fontSize: 16, marginTop: 10 }}>
+                  Loading sanctions data...
+                </p>
+              </div>
+            ) : selectedOfficerSanctions?.error ? (
+              <div style={{ color: "#b91c1c" }}>{selectedOfficerSanctions.error}</div>
+            ) : selectedOfficerSanctions?.sanctions ? (
+              <div>
+                <div style={{ marginBottom: 10 }}>
+                  <b>Name:</b> {selectedOfficerSanctions.name}
+                </div>
+                {Array.isArray(selectedOfficerSanctions.sanctions.checks) && selectedOfficerSanctions.sanctions.checks.length > 0 ? (
+                  selectedOfficerSanctions.sanctions.checks.map((check, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        marginBottom: 18,
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 8,
+                        padding: "14px 18px",
+                        background: "#f8fafc",
+                        boxShadow: "0 1px 4px rgba(30,41,59,0.04)"
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, color: "#2563eb", fontSize: 16, marginBottom: 4 }}>
+                        {check.source}
+                      </div>
+                      {check.summary && (
+                        <div style={{ fontSize: 14, color: "#64748b", marginBottom: 4 }}>
+                          <b>Risk Level:</b> {check.summary.risk_level?.toUpperCase() || "-"}
+                          {" | "}
+                          <b>Match Found:</b> {check.summary.match_found ? "Yes" : "No"}
+                          {check.summary.confidence !== undefined && (
+                            <>
+                              {" | "}
+                              <b>Confidence:</b> {check.summary.confidence}
+                            </>
+                          )}
+                          {check.summary.first_seen && (
+                            <>
+                              {" | "}
+                              <b>First Seen:</b> {new Date(check.summary.first_seen).toLocaleDateString()}
+                            </>
+                          )}
+                          {check.summary.last_seen && (
+                            <>
+                              {" | "}
+                              <b>Last Seen:</b> {new Date(check.summary.last_seen).toLocaleDateString()}
+                            </>
+                          )}
+                        </div>
+                      )}
+                      {check.flags && check.flags.length > 0 && (
+                        <div style={{ marginBottom: 6 }}>
+                          {check.flags.map((flag, i) => (
+                            <span
+                              key={i}
+                              style={{
+                                display: "inline-block",
+                                background: "#fef3c7",
+                                color: "#b45309",
+                                borderRadius: 4,
+                                padding: "2px 10px",
+                                fontSize: 12,
+                                fontWeight: 500,
+                                marginRight: 8,
+                                marginBottom: 2,
+                              }}
+                            >
+                              {flag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {Array.isArray(check.findings) && check.findings.length > 0 && (
+                        <ul style={{ paddingLeft: 0, margin: 0, listStyle: "none" }}>
+                          {check.findings.map((finding, fIdx) => (
+                            <li
+                              key={fIdx}
+                              style={{
+                                marginBottom: 10,
+                                padding: "10px 14px",
+                                borderRadius: 6,
+                                background: "#fff",
+                                border: "1px solid #e2e8f0",
+                                boxShadow: "0 1px 2px rgba(30,41,59,0.03)",
+                              }}
+                            >
+                              <div style={{ fontWeight: 600, color: "#2563eb", fontSize: 15 }}>
+                                {finding.caption || finding.id || "-"}
+                              </div>
+                              <div style={{ color: "#64748b", fontSize: 13 }}>
+                                <b>Score:</b> {finding.score || "-"}
+                                {finding.schema && (
+                                  <>
+                                    {" | "}
+                                    <b>Type:</b> {finding.schema}
+                                  </>
+                                )}
+                                {finding.datasets && finding.datasets.length > 0 && (
+                                  <>
+                                    {" | "}
+                                    <b>Datasets:</b> {finding.datasets.join(", ")}
+                                  </>
+                                )}
+                              </div>
+                              {finding.properties && (
+                                <div style={{ fontSize: 13, color: "#334155", marginBottom: 2 }}>
+                                  {Object.entries(finding.properties).map(([key, value]) => (
+                                    <div key={key}>
+                                      <b>{key}:</b> {Array.isArray(value) ? value.join(", ") : value}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ color: "#64748b", fontStyle: "italic" }}>No sanctions found.</div>
+                )}
+              </div>
+            ) : (
+              <div style={{ color: "#64748b" }}>No sanctions data available.</div>
+            )}
+            <style>
+              {`
+                @keyframes spin {
+                  0% { transform: rotate(0deg);}
+                  100% { transform: rotate(360deg);}
+                }
+              `}
+            </style>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -492,6 +730,7 @@ export default function CompanyProfile() {
                   </div>
                 </div>
               </div>
+
               <div>
                 <h3 style={{ marginBottom: 10, color: "#2563eb", fontWeight: 700, fontSize: 20 }}>
                   Accounts & Statements
@@ -541,7 +780,6 @@ export default function CompanyProfile() {
               </div>
             </div>
 
-            {/* Previous Names */}
             {companyDetails.profile.raw_data.previous_company_names?.length > 0 && (
               <div
                 style={{
@@ -570,6 +808,244 @@ export default function CompanyProfile() {
 
             {/* Officers Section */}
             <OfficerDetails officers={officersData} />
+
+            {/* Sanctions */}
+            <div>
+              <h3 style={{ marginBottom: 10, color: "#2563eb", fontWeight: 700, fontSize: 20 }}>
+                Sanctions Check
+              </h3>
+              {sanctionsData && sanctionsData.sanctions ? (
+                <div style={{ color: "#334155", fontSize: 16, lineHeight: 1.7 }}>
+                  <div>
+                    <b>Sanctions Found:</b>{" "}
+                    {Array.isArray(sanctionsData.sanctions.checks) && sanctionsData.sanctions.checks.length > 0
+                      ? "Yes"
+                      : "No"}
+                  </div>
+                  {Array.isArray(sanctionsData.sanctions.checks) && sanctionsData.sanctions.checks.length > 0 && (
+                    <div>
+                      {sanctionsData.sanctions.checks.map((check, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            marginBottom: 24,
+                            border: "1px solid #e2e8f0",
+                            borderRadius: 10,
+                            padding: "18px 22px",
+                            background: "#f8fafc",
+                            boxShadow: "0 1px 4px rgba(30,41,59,0.04)",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                color: "#2563eb",
+                                fontSize: 16,
+                                marginRight: 16,
+                                letterSpacing: 0.1,
+                              }}
+                            >
+                              {check.source}
+                            </span>
+                            {check.summary && (
+                              <span
+                                style={{
+                                  background:
+                                    check.summary.risk_level === "high"
+                                      ? "#fee2e2"
+                                      : check.summary.risk_level === "medium"
+                                        ? "#fef9c3"
+                                        : "#d1fae5",
+                                  color:
+                                    check.summary.risk_level === "high"
+                                      ? "#b91c1c"
+                                      : check.summary.risk_level === "medium"
+                                        ? "#b45309"
+                                        : "#059669",
+                                  borderRadius: 6,
+                                  padding: "2px 12px",
+                                  fontWeight: 600,
+                                  fontSize: 13,
+                                  marginRight: 12,
+                                }}
+                              >
+                                {check.summary.risk_level?.toUpperCase()} RISK
+                              </span>
+                            )}
+                            {check.summary && (
+                              <span style={{ color: "#64748b", fontSize: 13 }}>
+                                <b>Confidence:</b> {check.summary.confidence ? check.summary.confidence.toFixed(2) : "-"}
+                              </span>
+                            )}
+                          </div>
+                          {check.summary && (
+                            <div style={{ color: "#64748b", fontSize: 14, marginBottom: 8 }}>
+                              <span>
+                                <b>First Seen:</b>{" "}
+                                {check.summary.first_seen && check.summary.first_seen !== "N/A"
+                                  ? new Date(check.summary.first_seen).toLocaleDateString()
+                                  : check.summary.first_seen || "-"}
+                              </span>
+                              {" | "}
+                              <span>
+                                <b>Last Seen:</b>{" "}
+                                {check.summary.last_seen && check.summary.last_seen !== "N/A"
+                                  ? new Date(check.summary.last_seen).toLocaleDateString()
+                                  : check.summary.last_seen || "-"}
+                              </span>
+                            </div>
+                          )}
+                          {check.flags && check.flags.length > 0 && (
+                            <div style={{ marginBottom: 10 }}>
+                              {check.flags.map((flag, i) => (
+                                <span
+                                  key={i}
+                                  style={{
+                                    display: "inline-block",
+                                    background: "#fef3c7",
+                                    color: "#b45309",
+                                    borderRadius: 4,
+                                    padding: "2px 10px",
+                                    fontSize: 12,
+                                    fontWeight: 500,
+                                    marginRight: 8,
+                                    marginBottom: 2,
+                                  }}
+                                >
+                                  {flag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {/* Findings */}
+                          {Array.isArray(check.findings) && check.findings.length > 0 ? (
+                            <ul style={{ paddingLeft: 0, margin: 0, listStyle: "none" }}>
+                              {check.findings.map((finding, fIdx) => (
+                                <li
+                                  key={fIdx}
+                                  style={{
+                                    marginBottom: 14,
+                                    padding: "12px 16px",
+                                    borderRadius: 8,
+                                    background: "#fff",
+                                    border: "1px solid #e2e8f0",
+                                    boxShadow: "0 1px 2px rgba(30,41,59,0.03)",
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 600, color: "#2563eb", fontSize: 15 }}>
+                                    {finding.name?.full_name || finding.caption || "-"}
+                                  </div>
+                                  <div style={{ color: "#64748b", fontSize: 13, marginBottom: 2 }}>
+                                    <b>Score:</b> {finding.score ? finding.score.toFixed(2) : "-"}
+                                    {finding.schema && (
+                                      <>
+                                        {" | "}
+                                        <b>Type:</b> {finding.schema}
+                                      </>
+                                    )}
+                                    {finding.entity_type && (
+                                      <>
+                                        {" | "}
+                                        <b>Entity Type:</b> {finding.entity_type}
+                                      </>
+                                    )}
+                                    {finding.source && (
+                                      <>
+                                        {" | "}
+                                        <b>Source:</b> {finding.source}
+                                      </>
+                                    )}
+                                  </div>
+                                  {/* IDs */}
+                                  {finding.name?.ids && finding.name.ids.length > 0 && (
+                                    <div style={{ fontSize: 13, color: "#334155", marginBottom: 2 }}>
+                                      <b>Identifiers:</b>{" "}
+                                      {finding.name.ids
+                                        .map(
+                                          id =>
+                                            `${id.type}: ${id.number}${id.country ? ` (${id.country.official_name})` : ""
+                                            }`
+                                        )
+                                        .join(", ")}
+                                    </div>
+                                  )}
+                                  {/* Properties for opensanctions */}
+                                  {finding.properties && (
+                                    <div style={{ fontSize: 13, color: "#334155", marginBottom: 2 }}>
+                                      {finding.properties.name && (
+                                        <div>
+                                          <b>Name:</b> {finding.properties.name.join(", ")}
+                                        </div>
+                                      )}
+                                      {finding.properties.address && (
+                                        <div>
+                                          <b>Address:</b> {finding.properties.address.join(", ")}
+                                        </div>
+                                      )}
+                                      {finding.properties.taxNumber && (
+                                        <div>
+                                          <b>Tax Number:</b> {finding.properties.taxNumber.join(", ")}
+                                        </div>
+                                      )}
+                                      {finding.properties.country && (
+                                        <div>
+                                          <b>Country:</b> {finding.properties.country.join(", ")}
+                                        </div>
+                                      )}
+                                      {finding.properties.topics && (
+                                        <div>
+                                          <b>Topics:</b> {finding.properties.topics.join(", ")}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  {/* Datasets */}
+                                  {finding.datasets && finding.datasets.length > 0 && (
+                                    <div style={{ fontSize: 13, color: "#64748b", marginBottom: 2 }}>
+                                      <b>Datasets:</b> {finding.datasets.join(", ")}
+                                    </div>
+                                  )}
+                                  {/* Address for Castellum */}
+                                  {finding.name?.ids && finding.name.ids.length > 0 && (
+                                    <div style={{ fontSize: 13, color: "#64748b", marginBottom: 2 }}>
+                                      {finding.name.ids.map((id, idIdx) =>
+                                        id.country && id.country.official_name ? (
+                                          <span key={idIdx}>
+                                            <b>Country:</b> {id.country.official_name}
+                                            {idIdx < finding.name.ids.length - 1 ? ", " : ""}
+                                          </span>
+                                        ) : null
+                                      )}
+                                    </div>
+                                  )}
+                                  {/* First/Last Seen */}
+                                  <div style={{ fontSize: 13, color: "#64748b", marginBottom: 2 }}>
+                                    <b>First Seen:</b>{" "}
+                                    {finding.first_seen && finding.first_seen !== "N/A"
+                                      ? new Date(finding.first_seen).toLocaleDateString()
+                                      : finding.first_seen || "-"}
+                                    {" | "}
+                                    <b>Last Seen:</b>{" "}
+                                    {finding.last_seen && finding.last_seen !== "N/A"
+                                      ? new Date(finding.last_seen).toLocaleDateString()
+                                      : finding.last_seen || "-"}
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <div style={{ color: "#64748b", fontStyle: "italic" }}>No findings found.</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ color: "#64748b" }}>Loading sanctions data...</div>
+              )}
+            </div>
 
             {/* News Section */}
             <NewsDetails newsData={newsData?.checks} />
